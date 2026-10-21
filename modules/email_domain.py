@@ -39,6 +39,20 @@ def check_email_domain(domain):
             spf_records.append(record)
     print(spf_records)  # temporary
 
+    dmarc_txt = get_txt_records("_dmarc." + domain)
+    if dmarc_txt is None:
+        print("Unable to query the DNS, try again later.")
+        return False
+
+    dmarc_policy = None
+    for record in dmarc_txt:
+        if record.lower().startswith("v=dmarc1"):
+            for part in record.split(";"):
+                part = part.strip()
+                if part.lower().startswith("p="):
+                    dmarc_policy = part[2:].lower()
+    print(dmarc_policy)  # temporary
+
 
 if __name__ == "__main__":
     check_email_domain(input("Domain: "))
