@@ -35,6 +35,9 @@ def evaluate_spf(spf_records):
     if len(spf_records) > 1:
         return "ATTENTION", "Several SPF records: this is a configuration error, receivers may ignore them."
     tokens = spf_records[0].split()
+    for token in tokens:
+        if token.lower().startswith("redirect="):
+            return "ATTENTION", "SPF delegates to another domain (" + token + "): this version does not follow it, so it cannot be evaluated."
     ending = tokens[-1].lower()
     if ending in ("-all", "~all"):
         return "OK", "SPF found, other servers are refused or treated as suspicious (" + ending + ")."
