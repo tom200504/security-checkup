@@ -16,40 +16,39 @@ def evaluate(count):
     return "OK", "Not found in known leaks. This does not mean it is strong: a short or predictable password can simply not have leaked yet."
 
 
+def hash_password(password):
+    """Return the SHA-1 hash of a password, as uppercase hexadecimal text."""
+    return hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+
+
+def count_leaks(password_hash):
+    """Return how many times a SHA-1 hash appears in known leaks.
+    Only the first 5 characters of the hash are sent (k-anonymity).
+    Returns None if the service can't be queried."""
+    prefix = password_hash[:5]
+    suffix = password_hash[5:]
+    try:
+        response = requests.get("https://api.pwnedpasswords.com/range/" + prefix, timeout=5)
+    except requests.RequestException:
+        return None
+    if response.status_code != 200:
+        return None
+    for raw_line in response.text.splitlines():
+        parts = raw_line.split(":")
+        if parts[0] == suffix:
+            return int(parts[1])
+    return 0
+
+
 def check_password():
+    """Command-line flow: ask for a password, then return the verdict."""
     password = getpass.getpass("enter password : ")
     if password == "":
         print("The password can't be empty")
         return False
-    octect = password.encode("utf-8")
-    password_hash = hashlib.sha1(octect)
-    password_hashfinal = password_hash.hexdigest().upper()
-    prefix = password_hashfinal[:5]
-    sufix = password_hashfinal[5:]
-
-    URL = "https://api.pwnedpasswords.com/range/" + prefix
-    try:
-        response = requests.get(URL, timeout=5)
-    except requests.RequestException:
+    count = count_leaks(hash_password(password))
+    if count is None:
         print("Unable to reach the service, try again later.")
         return False
-    if response.status_code != 200:
-        print("error in status code of the call API")
-        return False
-    lines = response.text.splitlines()
-    count = 0
-    for raw_line in lines:
-        parts = raw_line.split(":")
-        if parts[0] == sufix:
-            count = int(parts[1])
-            break
-
     level, message = evaluate(count)
     return {"count": count, "level": level, "message": message}
-
-
-if __name__ == "__main__":
-    result = check_password()
-    if result:
-        print(result["level"] + ": " + result["message"])
-        print("Seen " + str(result["count"]) + " times in known leaks.")
