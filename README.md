@@ -25,6 +25,24 @@ python3 cli.py email example.com
 python3 cli.py email example.com --selector myselector
 ```
 
+## Tests
+
+Run all the tests from the project root, with the virtual environment active:
+
+```
+python3 -m pytest
+```
+
+Use `python3 -m pytest` rather than `pytest` alone: it makes sure Python finds the `modules` package.
+
+- **No test uses the network.** The DNS is replaced by a fake one (with pytest's `monkeypatch`), so the tests are fast and always give the same result.
+- **What is covered:**
+  - the verdict rules (password thresholds, SPF, DMARC, DKIM),
+  - the overall email level (the worst of SPF and DMARC),
+  - input validation (domain and DKIM selector),
+  - the handling of a DNS failure.
+- **What is not covered:** the real call to the Pwned Passwords API, because it needs the network.
+
 ## Security choices
 
 - **Password**: typed with `getpass` (hidden). The SHA-1 hash is computed locally and only its first 5 characters are sent to the Pwned Passwords API (k-anonymity). The rest of the hash is compared locally, so the service never sees the password or the full hash. Nothing is stored or logged.
@@ -43,6 +61,7 @@ python3 cli.py email example.com --selector myselector
 
 - A password absent from leaks is not necessarily strong.
 - The password module depends on a third-party service.
+- The call to that service is not covered by automated tests.
 - DKIM cannot be discovered without its selector: the tool tries common ones, and "not detected" does not mean "absent".
 - SPF `redirect=` and `include:` are not followed.
 - DMARC subdomain policy (`sp=`) is ignored.
@@ -52,6 +71,7 @@ python3 cli.py email example.com --selector myselector
 
 - Web dashboard (one page, one backend route per module).
 - More modules (suspicious link, suspicious document).
+- Test the Pwned Passwords API call with a fake response.
 
 ## Credits
 
